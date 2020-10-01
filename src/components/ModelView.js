@@ -13,7 +13,7 @@ Object.keys(sat_data).map((key,ind)=>{
   sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now(),0,0,0))
 })
 
-  var point_arr=[]
+  var point_arr=[],interval,currCode
   sat_arr.map((sat,ind)=>{
     var schema={
       lat:sat.lat,
@@ -22,7 +22,7 @@ Object.keys(sat_data).map((key,ind)=>{
       radius:map(sat.height,400,35000,3,12),
       height:sat.height,
       velocity:sat.velocity,
-      color:sat_data[Object.keys(sat_data)[ind]]['color'],
+      color:'#000000',
       ind:ind
     }
     point_arr.push(schema)
@@ -34,6 +34,7 @@ const ModelView=forwardRef((props,ref)=>{
   const [container,setContainer]=useState({height:0,width:0})
   const [satCode,setSatCode]=useState(props.satCode)
   const globeEl = useRef();
+  currCode=props.satCode
 
 
   useImperativeHandle(ref, () => ({
@@ -59,35 +60,39 @@ const ModelView=forwardRef((props,ref)=>{
     globeEl.current.pointOfView({ lat:point_arr[defaultSat].lat,lng:point_arr[defaultSat].lng,altitude:pointArr[defaultSat].alt+1.2 },1000);
   },[satCode])
 
-
-
   useEffect(()=>{
-
-    const interval = setInterval(() => {
-      sat_arr=[]
-      Object.keys(sat_data).map((key,ind)=>{
-        var data=sat_data[key]
-        sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now(),23.762397,90.418917,0))
-      })
-
-      point_arr=[]
-      sat_arr.map((sat,ind)=>{
-        var schema={
-          lat:sat.lat,
-          lng:sat.lng,
-          alt:sat.height/6400,
-          radius:map(sat.height,400,35000,2.5,6),
-          height:sat.height,
-          velocity:sat.velocity,
-          color:sat_data[Object.keys(sat_data)[ind]]['color'],
-          ind:ind
-        }
-        point_arr.push(schema)
-      })
-      setPointArr(point_arr)
-    }, 500);
-    return () => {clearInterval(interval)}
-  },[])
+    if(satCode) {
+      interval = setInterval(() => {
+        sat_arr=[]
+        Object.keys(sat_data).map((key,ind)=>{
+          var data=sat_data[key]
+          sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now(),23.762397,90.418917,0))
+        })
+        //console.log(satCode)
+        point_arr=[]
+        sat_arr.map((sat,ind)=>{
+          var schema={
+            lat:sat.lat,
+            lng:sat.lng,
+            alt:sat.height/6400,
+            radius:map(sat.height,400,35000,2.5,6),
+            height:sat.height,
+            velocity:sat.velocity,
+            color:'#000000',
+            ind:ind
+          }
+          if(Object.keys(sat_data)[ind]==currCode){
+            schema['color']='#ff0000'
+            //console.log(Object.keys(sat_data)[ind]+' '+satCode)
+          }
+          point_arr.push(schema)
+        })
+        setPointArr(point_arr)
+      }, 500);
+    } else {
+      clearInterval(interval);
+    }
+  },[satCode])
 
   return(
 
