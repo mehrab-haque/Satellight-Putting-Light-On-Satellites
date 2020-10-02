@@ -17,13 +17,13 @@ function getNormalizedCoord(coord, zoom) {
         };
       }
 
-var posInterval,pathInterval,map,marker,infoWindow,polyLine,poly=[],tle,data
+var posInterval,timeDiff,pathInterval,map,marker,infoWindow,polyLine,poly=[],tle,data
 
 const NightSkyView=forwardRef((props,ref)=>{
   tle=[props.data.tle_line1,props.data.tle_line2]
   data=props.data
+  timeDiff=props.timeDiff
   const [satCode,setSatCode]=useState(props.satCode)
-  const [timeDiff,setTimeDiff]=useState(props.timeDiff)
   const initialData=getSatelliteInfo(tle,Date.now()+timeDiff,0,0)
   const containerRef=useRef()
 
@@ -88,6 +88,10 @@ const NightSkyView=forwardRef((props,ref)=>{
     });
     marker.setMap(map);
 
+    marker.addListener("click", () => {
+          props.fpv()
+        });
+
     infoWindow = new window.google.maps.InfoWindow({
       content: '<div>Hello World !!!</div>'
     });
@@ -120,6 +124,7 @@ const NightSkyView=forwardRef((props,ref)=>{
             <center><img   height="30px" width='40px' src='${data.country_flag}'/></center>`+
             '<center>Lat:'+currData.lat.toFixed(3)+', Lng:'+currData.lng.toFixed(3)+'</center>'+
             '<center>Velocity:'+currData.velocity.toFixed(3)+'km/s <br/> Height:'+currData.height.toFixed(3)+'km</center>'+
+            '<center>'+new Date(Date.now()+timeDiff).toLocaleString()+'</center>'+
             '</div>'
 
         infoWindow.setContent(info)
@@ -156,8 +161,26 @@ const NightSkyView=forwardRef((props,ref)=>{
         lng:currData.lng
       })
       setSatCode(sat.satCode)
+
+    },
+    setTimeDiff(val){
+      poly=[]
+      var currData=getSatelliteInfo(tle,Date.now()+val,0,0)
+      var iconMarker = new window.google.maps.MarkerImage(
+                        data.icon_url,
+                        null,
+                        new window.google.maps.Point(0, 0), /* origin is 0,0 */
+                        new window.google.maps.Point(30, 30), /* anchor is bottom center of the scaled image */
+                        new window.google.maps.Size(60, 50)
+                    );
+      marker.setIcon(iconMarker)
+      map.panTo({
+        lat:currData.lat,
+        lng:currData.lng
+      })
+      timeDiff=val
     }
- }));
+  }));
 
 
 

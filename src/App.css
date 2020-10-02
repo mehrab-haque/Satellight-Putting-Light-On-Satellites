@@ -14,3 +14,9 @@
 body{
   overflow: hidden;
 }
+
+.statLabel{
+  position: absolute;
+  padding-top: 3px;
+  margin-left: 2px;
+}

@@ -6,27 +6,7 @@ import {sat_data} from '../assets/master'
 
 const map = (value, x1, y1, x2, y2) => (value - x1) * (y2 - x2) / (y1 - x1) + x2;
 
-var sat_arr=[]
-Object.keys(sat_data).map((key,ind)=>{
-  var data=sat_data[key]
-  console.log(key)
-  sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now(),0,0,0))
-})
-
-  var point_arr=[],interval,currCode
-  sat_arr.map((sat,ind)=>{
-    var schema={
-      lat:sat.lat,
-      lng:sat.lng,
-      alt:sat.height/6400,
-      radius:map(sat.height,400,35000,3,12),
-      height:sat.height,
-      velocity:sat.velocity,
-      color:'#000000',
-      ind:ind
-    }
-    point_arr.push(schema)
-  })
+var sat_arr=[],timeDiff,point_arr=[],interval,currCode
 
 const ModelView=forwardRef((props,ref)=>{
 
@@ -35,11 +15,16 @@ const ModelView=forwardRef((props,ref)=>{
   const [satCode,setSatCode]=useState(props.satCode)
   const globeEl = useRef();
   currCode=props.satCode
+  timeDiff=props.timeDiff
+
 
 
   useImperativeHandle(ref, () => ({
     setSatellite(sat){
       setSatCode(sat.satCode)
+    },
+    setTimeDiff(val){
+      timeDiff=val
     }
  }));
 
@@ -48,6 +33,24 @@ const ModelView=forwardRef((props,ref)=>{
   useEffect(()=>{
     //globeEl.current.controls().autoRotate = true;
       //globeEl.current.controls().autoRotateSpeed = 0.2;
+      Object.keys(sat_data).map((key,ind)=>{
+        var data=sat_data[key]
+        console.log(key)
+        sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now()+timeDiff,0,0,0))
+      })
+        sat_arr.map((sat,ind)=>{
+          var schema={
+            lat:sat.lat,
+            lng:sat.lng,
+            alt:sat.height/6400,
+            radius:map(sat.height,400,35000,3,12),
+            height:sat.height,
+            velocity:sat.velocity,
+            color:'#000000',
+            ind:ind
+          }
+          point_arr.push(schema)
+        })
       console.log(props.parent.current.offsetWidth)
       setContainer({
         height:props.parent.current.offsetHeight,
@@ -66,7 +69,7 @@ const ModelView=forwardRef((props,ref)=>{
         sat_arr=[]
         Object.keys(sat_data).map((key,ind)=>{
           var data=sat_data[key]
-          sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now(),23.762397,90.418917,0))
+          sat_arr.push(getSatelliteInfo([data.tle_line1,data.tle_line2],Date.now()+timeDiff,23.762397,90.418917,0))
         })
         //console.log(satCode)
         point_arr=[]
@@ -79,7 +82,8 @@ const ModelView=forwardRef((props,ref)=>{
             height:sat.height,
             velocity:sat.velocity,
             color:'#000000',
-            ind:ind
+            ind:ind,
+            code:Object.keys(sat_data)[ind]
           }
           if(Object.keys(sat_data)[ind]==currCode){
             schema['color']='#ff0000'
@@ -111,14 +115,14 @@ const ModelView=forwardRef((props,ref)=>{
 
             onCustomLayerHover={d=>{
                 if(d!=null && d!=undefined){
-
+                  
                 }
               }
           }
 
           onCustomLayerClick={d=>{
               if(d!=null && d!=undefined){
-
+                props.show(d.code)
               }
             }
         }

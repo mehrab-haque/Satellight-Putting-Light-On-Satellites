@@ -1,7 +1,8 @@
 import React,{useState,useEffect,useRef} from 'react'
-import{makeStyles,useTheme,Button,TextField,Avatar,Tooltip,Drawer,IconButton,Hidden,CssBaseline,AppBar,Toolbar,List,Typography,Divider,ListItem} from '@material-ui/core'
+import{makeStyles,useTheme,Snackbar,Button,Dialog,DialogActions,DialogContent,DialogTitle,TextField,Avatar,Tooltip,Drawer,IconButton,Hidden,CssBaseline,AppBar,Toolbar,List,Typography,Divider,ListItem} from '@material-ui/core'
 import ToggleButton from '@material-ui/lab/ToggleButton';
 import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
+import { deepOrange, deepPurple } from '@material-ui/core/colors';
 import MenuIcon from '@material-ui/icons/Menu';
 import ExploreIcon from '@material-ui/icons/Explore';
 import Brightness4Icon from '@material-ui/icons/Brightness4';
@@ -9,15 +10,20 @@ import SportsBaseballIcon from '@material-ui/icons/SportsBaseball';
 import VisibilityIcon from '@material-ui/icons/Visibility';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import AccessAlarmsIcon from '@material-ui/icons/AccessAlarms';
+import MessageIcon from '@material-ui/icons/Message';
+import Cookies from 'universal-cookie';
+import * as firebase from 'firebase';
 import {sat_data} from '../assets/master'
 import MapView from './MapView'
 import NightSkyView from './NightSkyView'
 import ModelView from './ModelView'
+import FPVView from './FPVView'
 
+const COOKIE_AGE=31536000
 const drawerWidth = 240;
 const useStyles = makeStyles((theme) => ({
   root: {
-    display: 'flex',
+    display: "flex"
   },
   paper: {
     padding: theme.spacing(2),
@@ -40,6 +46,9 @@ const useStyles = makeStyles((theme) => ({
       width: drawerWidth,
       flexShrink: 0,
     },
+  },
+  full:{
+    width: drawerWidth-45
   },
   appBar: {
     [theme.breakpoints.up('sm')]: {
@@ -70,6 +79,14 @@ const useStyles = makeStyles((theme) => ({
     display: "flex",
     flexDirection: "column",
     justifyContent: "center"
+  },
+  orange: {
+    color: theme.palette.getContrastText(deepOrange[500]),
+    backgroundColor: deepOrange[500],
+  },
+  purple: {
+    color: theme.palette.getContrastText(deepPurple[500]),
+    backgroundColor: deepPurple[500],
   }
 }));
 
@@ -104,40 +121,153 @@ sat_codes.map(code=>{
   splitMulti(sat.sat_name,[' ',',','.']).map(token=>{
     tokens+=token.trim()
   })
+  if('isGeoStationary' in sat && sat.isGeoStationary)
+    tokens+='geostationary'
 
   tokenObject[code]=tokens
 })
 
-//console.log(tokenObject)
 
-//console.log(tokenObject)
+var cookies = new Cookies(),isCookied=true,defaultSatCode='25544',commentsRef=null,startup=true
+if(cookies.get('intro')==undefined || cookies.get('intro')==null)isCookied=false
+
 
 const Main=props=>{
   const { window } = props;
   const classes = useStyles();
   const theme = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notification,setNotification]=useState(false)
+  const [message,setMessage]=useState('')
   const [mode, setMode] = useState('map');
   const [time,setTime]=useState('live')
-  const [satellite,setSatellite]=useState('27424'/*25544*/)
+  const [satellite,setSatellite]=useState(defaultSatCode)
   const [searchFilter,setSearchFilter]=useState(sat_data)
+  const [timeDialog,setTimeDialog]=useState(false)
+  const [desDialog,setDesDialog]=useState(false)
   const [timeDiff,setTimeDiff]=useState(0)
+  const [video,setVideo]=useState(!isCookied)
+  const [social,setSocial]=useState(false)
+  const [developer,setDeveloper]=useState(false)
+  const [comments,setComments]=useState(false)
+  const [addComment,setAddComment]=useState(false)
+  const [commentsData,setCommentsData]=useState({})
+  const [stats,setStats]=useState({})
 
   const viewRef=useRef()
   const containerRef=useRef()
+  const timeRef=useRef()
+  const commentRef=useRef()
+  const nameRef=useRef()
 
+  const notify=message=>{
+    setMessage(message)
+    setNotification(true)
+  }
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   const handleMode = (event, newMode) => {
-    setMode(newMode);
+    if(newMode!=null)
+      setMode(newMode);
   };
 
   const handleTime = (event, newTime) => {
-    setTime(newTime);
+    if(newTime!=null)
+      setTime(newTime);
   };
+
+  const fpv=()=>{
+    setMode('fpv')
+  }
+
+  const modelSatClick=code=>{
+    setSatellite(code)
+    setDesDialog(true)
+  }
+
+  const gotoTimeLine=()=>{
+    var timeDiffTmp=new Date(timeRef.current.value).getTime()-Date.now()
+    viewRef.current.setTimeDiff(timeDiffTmp)
+    setTimeDiff(timeDiffTmp)
+    setTimeDialog(false)
+  }
+
+  useEffect(()=>{
+    if(!video && !startup){
+      setSocial(true)
+    }
+  },[video])
+
+  useEffect(()=>{
+    startup=false
+    firebase.firestore().collection('satellight').doc('stats').onSnapshot(docSnapshot => {
+      setStats(docSnapshot.data())
+    }, err => {
+      console.log(err);
+    })
+  },[])
+
+  const countView=code=>{
+    firebase.firestore().collection('satellight').doc('stats').update({
+      [code+'_v']:firebase.firestore.FieldValue.increment(1)
+    })
+  }
+
+  const countComment=code=>{
+    firebase.firestore().collection('satellight').doc('stats').update({
+      [code+'_c']:firebase.firestore.FieldValue.increment(1)
+    })
+  }
+
+  useEffect(()=>{
+    if(time=='other')
+      setTimeDialog(true)
+    else if(time=='live'){
+      setTimeDiff(0)
+      viewRef.current.setTimeDiff(0)
+    }
+  },[time])
+
+  const setCookie=()=>{
+    cookies.set('intro',true,{ path: '/', maxAge: COOKIE_AGE })
+  }
+
+  useEffect(()=>{
+    if(!comments && commentsRef!=null)
+      commentsRef.off()
+  },[comments])
+
+  const loadComments=code=>{
+    commentsRef=firebase.database().ref().child('comments').child(code)
+    commentsRef.on('value', function(snapshot) {
+      if(snapshot.val()!=null)setCommentsData(snapshot.val())
+      else setCommentsData({})
+    });
+    setComments(true)
+  }
+
+  const postComment=()=>{
+    var name=nameRef.current.value.trim()
+    var comment=commentRef.current.value.trim()
+    if(name.length==0 || comment.length==0)
+      notify('Fields can\'t be empty.')
+    else{
+      setAddComment(false)
+      commentsRef.push().set({
+        name:name,
+        comment:comment,
+        timestamp:Date.now()
+      }).then(()=>{
+        notify('Comment added')
+        countComment(satellite)
+      }).catch(err=>{
+        notify(err.message)
+      })
+    }
+  }
 
   const filter=e=>{
     var keywords=splitMulti(e.target.value,[' ',',','.'])
@@ -161,18 +291,27 @@ const Main=props=>{
       satCode:satellite,
       data:sat_data[satellite]
     })
+    countView(satellite)
   },[satellite])
 
   const container = window !== undefined ? () => window().document.body : undefined;
   const drawer=(
     <div className='explorer'>
     <center>
+
+    <Button style={{marginTop:'10px'}} onClick={()=>{setVideo(true)}} variant='outlined' color="secondary">
+      Usage
+    </Button>
+    <Button  style={{marginTop:'10px',marginLeft:'5px'}} onClick={()=>{setDeveloper(true)}} variant='outlined' color="primary">
+      Developer
+    </Button>
+
       <ToggleButtonGroup
         value={mode}
         exclusive
         onChange={handleMode}
         aria-label="text alignment"
-        style={{marginTop:'5px'}}
+        style={{marginTop:'10px'}}
       >
           <ToggleButton value="map" aria-label="left aligned">
             <Tooltip title="Map View">
@@ -209,16 +348,14 @@ const Main=props=>{
             <CheckCircleIcon/>
           </Tooltip>
         </ToggleButton>
-        <ToggleButton value="other" aria-label="left aligned">
+        <ToggleButton onClick={()=>{setTimeDialog(true)}} value="other" aria-label="left aligned">
           <Tooltip title="Past/Future">
             <AccessAlarmsIcon/>
           </Tooltip>
         </ToggleButton>
-          </ToggleButtonGroup>
+      </ToggleButtonGroup><br/>
 
-
-
-        <TextField style={{marginTop:'20px'}} onChange={filter} id="outlined-basic" label="Search" variant="outlined" />
+        <TextField style={{marginTop:'5px'}} onChange={filter} id="outlined-basic" label="Search" variant="outlined" />
       </center>
       <List>
         {
@@ -230,7 +367,7 @@ const Main=props=>{
                 <Divider />
                 <ListItem selected={key==satellite} onClick={()=>(setSatellite(key))}  button>
                   <div>
-                    <Typography variant="subtitle1" gutterBottom>
+                    <Typography className={classes.full} variant="subtitle1" gutterBottom>
                       {sat.name}
                     </Typography>
                     <Typography variant="body2" gutterBottom>
@@ -241,13 +378,22 @@ const Main=props=>{
                       <Avatar alt={sat.country_name} src={sat.country_flag} />
                     </div>
                     <center >
-                      <Button style={{marginTop:'10px'}} variant="outlined" color="primary" >
+                      <Button style={{marginTop:'10px'}} onClick={()=>{setDesDialog(true)}} variant="outlined" color="primary" >
                         Details
                       </Button>
-                      <Button style={{marginTop:'10px',marginLeft:'5px'}} variant="outlined" color="primary" >
-                        Plot
-                      </Button>
                     </center>
+                    <Typography style={{marginTop:'10px'}} variant="body2" gutterBottom>
+                      <VisibilityIcon color='primary'/>
+                      <font className='statLabel' color="#00977bb">
+                        {key+'_v' in stats?stats[key+'_v']:0}
+                        </font>
+                        <div style={{float:'right',cursor:'pointer'}} onClick={()=>{loadComments(key)}}>
+                          <MessageIcon color='primary'/>
+                          <font className='statLabel' color="#00977bb">
+                            {key+'_c' in stats?stats[key+'_c']:0}
+                          </font>
+                        </div>
+                    </Typography>
                   </div>
                 </ListItem>
               <Divider />
@@ -263,6 +409,204 @@ const Main=props=>{
 
   return(
       <div className={classes.root}>
+      <Snackbar
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        open={notification}
+        onClose={()=>{setNotification(false)}}
+        autoHideDuration={3000}
+        message={message}
+      />
+      <Dialog open={video} onClose={()=>{setVideo(false)}} aria-labelledby="form-dialog-title">
+          <DialogTitle id="form-dialog-title">How to use</DialogTitle>
+          <DialogContent className={classes.root}>
+            <iframe width="560" height="315" src="https://www.youtube.com/embed/jHfov2AC6ZA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={()=>{setVideo(false)}} color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={social} onClose={()=>{setSocial(false)}} aria-labelledby="form-dialog-title">
+            <DialogTitle id="form-dialog-title">Social Features</DialogTitle>
+            <DialogContent className={classes.root}>
+              <img src={require('../assets/social.jpg')} width='100%'/>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={()=>{setSocial(false);setCookie();}} color="secondary">
+                Don't show again
+              </Button>
+              <Button onClick={()=>{setSocial(false)}} color="primary">
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
+        <Dialog open={developer} onClose={()=>{setDeveloper(false)}} aria-labelledby="form-dialog-title">
+            <DialogTitle id="form-dialog-title">Md. Mehrab Haque , Bangladesh</DialogTitle>
+            <DialogContent>
+              <Typography variant="body">
+                Currently studying CSE in BUET (L-1/T-2 currently (2020))
+              </Typography><br/>
+              <Typography variant="body">
+                Email : mehrab.haque.0001@gmail.com
+              </Typography><br/>
+              <Typography variant="body">
+                <a href='https://github.com/mehrab-haque'>Github</a><span> </span><span> </span>
+                <a href='https://www.facebook.com/mdmehrab.haque.9'>Facebook</a><span> </span><span> </span>
+                <a href='https://www.linkedin.com/in/md-mehrab-haque-1607401a0/'>LinkedIn</a><span> </span><span> </span>
+              </Typography>
+              <center>
+                <img width='50%' style={{borderRadius:'100%'}} src={require('../assets/me.png')}/>
+              </center>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={()=>{setDeveloper(false)}} color="primary">
+                Ok
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog open={comments} onClose={()=>{setComments(false)}} aria-labelledby="form-dialog-title">
+              <DialogTitle id="form-dialog-title">{sat_data[satellite].name}</DialogTitle>
+              <DialogContent>
+                <Button onClick={()=>{setAddComment(true)}} color="primary" variant='outlined' fullWidth>
+                  + Add Your Comment
+                </Button>
+                {Object.keys(commentsData).reverse().map(commentKey=>{
+                  var comment=commentsData[commentKey]
+                  return(
+                    <div style={{backgroundColor:'#eaeaea',marginTop:'5px',padding:'4px'}}>
+                      <div style={{display:'flex'}}>
+                        <Avatar className={classes.orange}>
+                          {comment.name.substr(0,1)}
+                        </Avatar>
+                        <div style={{padding:'4px'}}>
+                          <font><b>{comment.name}</b></font><br/>
+                          <Typography variant="body2">
+                            {new Date(comment.timestamp).toLocaleString()}
+                          </Typography>
+                        </div>
+                      </div>
+                      <Typography variant="body">
+                        {comment.comment}
+                      </Typography>
+                    </div>
+                  )
+                })}
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={()=>{setComments(false)}} color="primary">
+                  Ok
+                </Button>
+              </DialogActions>
+            </Dialog>
+            <Dialog open={addComment} onClose={()=>{setAddComment(false)}} aria-labelledby="form-dialog-title">
+                <DialogTitle id="form-dialog-title">Add Comment</DialogTitle>
+                <DialogContent>
+                  <TextField
+                    inputRef={nameRef}
+                    label="Your Name"
+                    variant="outlined"
+                    fullWidth
+                  />
+                  <TextField
+                    style={{marginTop:'5px'}}
+                    inputRef={commentRef}
+                    label="Your Comment"
+                    multiline
+                    variant="outlined"
+                    fullWidth
+                    rows={4}
+                  /><br/>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={()=>{setAddComment(false)}} color="primary">
+                    Cancel
+                  </Button>
+                  <Button onClick={postComment} color="primary">
+                    Post Comment
+                  </Button>
+                </DialogActions>
+              </Dialog>
+      <Dialog open={timeDialog} onClose={()=>{setTimeDialog(false);}} aria-labelledby="form-dialog-title">
+          <DialogTitle id="form-dialog-title">Set timeline</DialogTitle>
+          <DialogContent className={classes.root}>
+
+          <TextField
+            inputRef={timeRef}
+            id="datetime-local"
+            label="timeline starting point"
+            type="datetime-local"
+            defaultValue="2020-10-01T22:30"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={()=>{setTimeDialog(false)}} color="secondary">
+              Cancel
+            </Button>
+            <Button onClick={gotoTimeLine} color="primary">
+              Go
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={desDialog} onClose={()=>{setDesDialog(false);}} aria-labelledby="form-dialog-title">
+            <DialogTitle id="form-dialog-title">{sat_data[satellite].sat_name}</DialogTitle>
+            <DialogContent>
+              <Typography variant="body">
+                {sat_data[satellite].name}
+                {sat_data[satellite].isGeoStationary?'(Geostationary)':''}
+              </Typography>
+              <Typography variant="body"><br/>
+                Country : {sat_data[satellite].country_name}
+              </Typography>
+              <Typography variant="body"><br/>
+                Type : {sat_data[satellite].type}
+              </Typography>
+              <Typography variant="body"><br/>
+                Launch Date : {sat_data[satellite].launch_date}
+              </Typography>
+              <Typography variant="body"><br/>
+                Mission Duration : {sat_data[satellite].mission_duration}
+              </Typography>
+              <Typography variant="body"><br/>
+                Launch Mass : {sat_data[satellite].launch_mass}
+              </Typography>
+              <br/>
+              {
+                sat_data[satellite].real_images.map(url=>{
+                  return(
+                    <img style={{marginLeft:'2px'}} src={url} width='30%'/>
+                  )
+                })
+              }
+              <Typography variant="body"><br/>
+                {sat_data[satellite].description}
+              </Typography>
+              <br/><br/>
+                <b><u>Use Cases :</u></b>
+
+              {
+                sat_data[satellite].use_cases.map((usage,ind)=>{
+                  return(
+                    <Typography variant="body"><br/>
+                      ({ind+1}){usage}<br/>
+                    </Typography>
+                  )
+                })
+              }
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={()=>{setDesDialog(false)}} color="secondary">
+                Ok
+              </Button>
+            </DialogActions>
+          </Dialog>
         <CssBaseline />
         <AppBar style={{backgroundColor:'#0090ff'}} position="fixed" className={classes.appBar}>
           <Toolbar>
@@ -275,9 +619,9 @@ const Main=props=>{
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap>
-              Satellight : putting light on satellites
-            </Typography>
+              <Typography variant="h6" noWrap>
+                Satellight : putting light on satellites
+              </Typography>
           </Toolbar>
         </AppBar>
         <nav className={classes.drawer} aria-label="mailbox folders">
@@ -316,15 +660,19 @@ const Main=props=>{
             <div className='container' ref={containerRef} style={{height:'100%'}}>
               {
                 mode=='map'?(
-                    <MapView key={Date.now()} ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
+                    <MapView fpv={fpv} key={[satellite,timeDiff]} ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
                 ):(
                   mode=='night'?(
-                      <NightSkyView key={Date.now()} ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
+                      <NightSkyView fpv={fpv} key={[satellite,timeDiff]} ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
                   ):(
                     mode=='3d'?(
-                        <ModelView parent={containerRef} ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
+                        <ModelView show={modelSatClick} parent={containerRef} ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
                     ):(
-                      <br/>
+                      mode=='fpv'?(
+                          <FPVView ref={viewRef} satCode={satellite} data={sat_data[satellite]} timeDiff={timeDiff}/>
+                      ):(
+                        <br/>
+                      )
                     )
                   )
                 )
