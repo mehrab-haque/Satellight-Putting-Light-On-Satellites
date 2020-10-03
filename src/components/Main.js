@@ -461,6 +461,16 @@ const Main=props=>{
               <center>
                 <img width='50%' style={{borderRadius:'100%'}} src={require('../assets/me.png')}/>
               </center>
+              <Typography variant="body">
+                This web app is a part of the project "Satellight" which is submitted to NASA space app challenge, me and my other team-mates are participating as "BUET Zenith", they are also contributing to other parts of the project such as android, arduino and data collection.<br/>
+                <ul>
+                  <li>Rabib Jahin : Raw data collection (which is implemented in this site).</li>
+                  <li>Tamim Ehsan : Arduino pointer device and presentation.</li>
+                  <li>Hasan Masum : Android</li>
+                  <li>Md. Jehadul Karim Sabit : Android</li>
+                  <li>Fabiha Tasneem : Presentation</li>
+                </ul>
+              </Typography>
             </DialogContent>
             <DialogActions>
               <Button onClick={()=>{setDeveloper(false)}} color="primary">
@@ -590,16 +600,18 @@ const Main=props=>{
               </Typography>
               <br/><br/>
                 <b><u>Use Cases :</u></b>
+              <Typography variant="body"><br/>
+                <ul>
+                  {
+                    sat_data[satellite].use_cases.map((usage,ind)=>{
+                      return(
+                        <li>{usage}</li>
+                      )
+                    })
+                  }
+                </ul>
+              </Typography>
 
-              {
-                sat_data[satellite].use_cases.map((usage,ind)=>{
-                  return(
-                    <Typography variant="body"><br/>
-                      ({ind+1}){usage}<br/>
-                    </Typography>
-                  )
-                })
-              }
             </DialogContent>
             <DialogActions>
               <Button onClick={()=>{setDesDialog(false)}} color="secondary">
