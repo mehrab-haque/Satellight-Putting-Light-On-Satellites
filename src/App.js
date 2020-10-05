@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import './firebase_config';
+import './assets/style';
 import Main from './components/Main'
 
 function App() {
