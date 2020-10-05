@@ -179,6 +179,9 @@ const NightSkyView=forwardRef((props,ref)=>{
         lng:currData.lng
       })
       timeDiff=val
+    },
+    location(location){
+      
     }
   }));
 

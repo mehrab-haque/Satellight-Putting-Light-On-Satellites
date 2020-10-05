@@ -6,17 +6,17 @@ import {sat_data} from '../assets/master'
 
 const map = (value, x1, y1, x2, y2) => (value - x1) * (y2 - x2) / (y1 - x1) + x2;
 
-var sat_arr=[],timeDiff,point_arr=[],interval,currCode
+var sat_arr=[],timeDiff,point_arr=[],interval,currCode,locationVar=[]
 
 const ModelView=forwardRef((props,ref)=>{
-
+  if(props.location!=null)locationVar=[props.location]
   const [pointArr, setPointArr] = useState(point_arr);
   const [container,setContainer]=useState({height:0,width:0})
   const [satCode,setSatCode]=useState(props.satCode)
+  const [location,setLocation]=useState(locationVar)
   const globeEl = useRef();
   currCode=props.satCode
   timeDiff=props.timeDiff
-
 
 
   useImperativeHandle(ref, () => ({
@@ -25,6 +25,10 @@ const ModelView=forwardRef((props,ref)=>{
     },
     setTimeDiff(val){
       timeDiff=val
+    },
+    location(location){
+      setLocation([location])
+      //console.log(lat,lng)
     }
  }));
 
@@ -112,10 +116,17 @@ const ModelView=forwardRef((props,ref)=>{
 
             showGraticules={true}
 
+              pointsData={location}
+              pointLabel={() => 'Your Location'}
+              pointLat={location.lat}
+              pointLng={location.lng}
+              pointRadius={1}
+              pointAltitude={0.5}
+              pointColor={() => '#00ff00'}
 
             onCustomLayerHover={d=>{
                 if(d!=null && d!=undefined){
-                  
+
                 }
               }
           }
@@ -126,6 +137,8 @@ const ModelView=forwardRef((props,ref)=>{
               }
             }
         }
+
+
 
         customLayerData={pointArr}
         customThreeObject={d =>{

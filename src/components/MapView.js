@@ -1,7 +1,7 @@
 import React,{useState,createRef,useRef,useEffect,forwardRef, useImperativeHandle} from 'react'
 import { getSatelliteInfo } from "tle.js";
 
-var posInterval,timeDiff,pathInterval,map,marker,infoWindow,polyLine,poly=[],tle,data
+var posInterval,timeDiff,pathInterval,map,marker,mymarker,infoWindow,myinfoWindow,polyLine,poly=[],tle,data
 
 function getNormalizedCoord(coord, zoom) {
         const y = coord.y;
@@ -35,7 +35,7 @@ const MapView=forwardRef((props,ref)=>{
         lat: initialData.lat,
         lng: initialData.lng
       },
-      zoom: 4,
+      zoom: 3,
       streetViewControl: false,
       mapTypeControlOptions: {
         mapTypeIds: [window.google.maps.MapTypeId.ROADMAP,window.google.maps.MapTypeId.HYBRID,'Sky']
@@ -84,7 +84,15 @@ const MapView=forwardRef((props,ref)=>{
         icon:iconMarker,
         title:"Hello World!"
     });
-    marker.setMap(map);
+
+
+    mymarker = new window.google.maps.Marker({
+       position: map.center
+   });
+   mymarker.setVisible(false)
+
+
+
 
     marker.addListener("click", () => {
           props.fpv()
@@ -94,7 +102,12 @@ const MapView=forwardRef((props,ref)=>{
       content: '<div>Hello World !!!</div>'
     });
 
+    myinfoWindow = new window.google.maps.InfoWindow({
+      content: '<div>Your Location</div>'
+    });
+
     infoWindow.open(map, marker);
+
 
     polyLine= new window.google.maps.Polyline({
       path: poly,
@@ -106,7 +119,28 @@ const MapView=forwardRef((props,ref)=>{
 
     polyLine.setMap(map)
 
+    console.log(props.location)
+
+    if(props.location!=null)
+      markPosition(props.location)
+      mymarker.setMap(map);
+      marker.setMap(map);
+
+    map.panTo(marker.getPosition())
   },[])
+
+  const markPosition=location=>{
+    mymarker.setPosition({
+      lat:location.lat,
+      lng:location.lng
+    })
+    mymarker.setVisible(true)
+    myinfoWindow.open(map, mymarker);
+    mymarker.setMap(map);
+    marker.setMap(map);
+    map.panTo(marker.getPosition())
+
+  }
 
   useEffect(()=>{
     if(satCode) {
@@ -176,14 +210,14 @@ const MapView=forwardRef((props,ref)=>{
         lng:currData.lng
       })
       timeDiff=val
+    },
+    location(location){
+      markPosition(location)
+      map.panTo(marker.getPosition())
+      //console.log(lat,lng)
     }
  }));
 
-
-
-  useEffect(()=>{
-
-  },[])
 
   return(
     <div  style={{ width: "100%", height: "100%" }} ref={containerRef}/>
