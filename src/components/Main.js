@@ -137,7 +137,7 @@ sat_codes.map(code=>{
 
 
 var canvasDim=250,cookies = new Cookies(),isCookied=true,interval,defaultSatCode='25544',commentsRef=null,startup=true
-if(cookies.get('intro')==undefined || cookies.get('intro')==null)isCookied=false
+if(cookies.get('intro_tutorial')==undefined || cookies.get('intro_tutorial')==null)isCookied=false
 
 
 const Main=props=>{
@@ -154,7 +154,10 @@ const Main=props=>{
   const [timeDialog,setTimeDialog]=useState(false)
   const [desDialog,setDesDialog]=useState(false)
   const [timeDiff,setTimeDiff]=useState(0)
-  const [video,setVideo]=useState(!isCookied)
+  const [tutorial1,setTutorial1]=useState(!isCookied)
+  const [tutorial2,setTutorial2]=useState(false)
+  const [tutorial3,setTutorial3]=useState(false)
+  const [video,setVideo]=useState(false)
   const [social,setSocial]=useState(false)
   const [developer,setDeveloper]=useState(false)
   const [comments,setComments]=useState(false)
@@ -209,12 +212,6 @@ const Main=props=>{
   }
 
   useEffect(()=>{
-    if(!video && !startup){
-      setSocial(true)
-    }
-  },[video])
-
-  useEffect(()=>{
     startup=false
     firebase.firestore().collection('satellight').doc('stats').onSnapshot(docSnapshot => {
       setStats(docSnapshot.data())
@@ -250,7 +247,7 @@ const Main=props=>{
   },[time])
 
   const setCookie=()=>{
-    cookies.set('intro',true,{ path: '/', maxAge: COOKIE_AGE })
+    cookies.set('intro_tutorial',true,{ path: '/', maxAge: COOKIE_AGE })
   }
 
   useEffect(()=>{
@@ -441,7 +438,7 @@ const Main=props=>{
     <div className='explorer'>
     <center>
 
-    <Button style={{marginTop:'10px'}} onClick={()=>{setVideo(true)}} variant='outlined' color="secondary">
+    <Button style={{marginTop:'10px'}} onClick={()=>{setTutorial1(true)}} variant='outlined' color="secondary">
       Usage
     </Button>
     <Button  style={{marginTop:'10px',marginLeft:'5px'}} onClick={()=>{setDeveloper(true)}} variant='outlined' color="primary">
@@ -572,14 +569,14 @@ const Main=props=>{
         autoHideDuration={3000}
         message={message}
       />
-      <Dialog open={video} onClose={()=>{setVideo(false)}} aria-labelledby="form-dialog-title">
+      <Dialog open={video} onClose={()=>{setVideo(false);setTutorial2(true)}} aria-labelledby="form-dialog-title">
           <DialogTitle id="form-dialog-title">How to use</DialogTitle>
           <DialogContent className={classes.root}>
             <iframe width="560" height="315" src="https://www.youtube.com/embed/jHfov2AC6ZA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
           </DialogContent>
           <DialogActions>
-            <Button onClick={()=>{setVideo(false)}} color="primary">
-              Close
+            <Button onClick={()=>{setVideo(false);setTutorial2(true)}} color="primary">
+              Ok
             </Button>
           </DialogActions>
         </Dialog>
@@ -597,6 +594,39 @@ const Main=props=>{
               </Button>
             </DialogActions>
           </Dialog>
+          <Dialog open={tutorial1} onClose={()=>{setTutorial1(false);setVideo(true)}} aria-labelledby="form-dialog-title">
+              <DialogTitle id="form-dialog-title">Location Access</DialogTitle>
+              <DialogContent className={classes.root}>
+                <img src={require('../assets/tutorial3.jpg')} width='100%'/>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={()=>{setTutorial1(false);setVideo(true)}} color="primary">
+                  Ok
+                </Button>
+              </DialogActions>
+            </Dialog>
+            <Dialog open={tutorial2} onClose={()=>{setTutorial2(false);setTutorial3(true)}} aria-labelledby="form-dialog-title">
+                <DialogTitle id="form-dialog-title">Your Location</DialogTitle>
+                <DialogContent className={classes.root}>
+                  <img src={require('../assets/tutorial2.jpg')} width='100%'/>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={()=>{setTutorial2(false);setTutorial3(true)}} color="primary">
+                    Ok
+                  </Button>
+                </DialogActions>
+              </Dialog>
+          <Dialog open={tutorial3} onClose={()=>{setTutorial3(false);setSocial(true)}} aria-labelledby="form-dialog-title">
+              <DialogTitle id="form-dialog-title">Ground Tracking</DialogTitle>
+              <DialogContent className={classes.root}>
+                <img src={require('../assets/tutorial1.jpg')} width='100%'/>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={()=>{setTutorial3(false);setSocial(true)}} color="primary">
+                  Ok
+                </Button>
+              </DialogActions>
+            </Dialog>
         <Dialog open={developer} onClose={()=>{setDeveloper(false)}} aria-labelledby="form-dialog-title">
             <DialogTitle id="form-dialog-title">Md. Mehrab Haque , Bangladesh</DialogTitle>
             <DialogContent>
